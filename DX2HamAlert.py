@@ -239,20 +239,11 @@ if match:
                 "conditions": {
                     "callsign": calls,
                     "spotterDxcc": [
-                        209,
-                        223,
-                        245,
-                        114,
-                        122,
-                        265,
-                        279,
-                        294,
+                        #add your DXCC here
                     ],
                     "mode": ["ssb", "psk", "ft8", "ft4"],
                     "notSpotter": [
-                        "2E0INH",
-                        "G4IRN",
-                        "GM4WJA",
+                        # add websdrs you want to ignore here
                     ],
                     "band": [
                         "80m",
