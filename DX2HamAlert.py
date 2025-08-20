@@ -12,7 +12,7 @@ import pyfiglet
 import requests
 from dateutil.relativedelta import relativedelta
 
-DEBUG = 0
+DEBUG = 1
 
 CSI = "\033["
 RESET = CSI + "0m"
@@ -34,6 +34,8 @@ current_date = datetime.datetime.now()
 last_month_date = current_date - relativedelta(months=1)
 last_month = last_month_date.strftime("%B %Y")
 last_update = current_date.strftime("%B %Y")
+
+prev_callsigns = []
 
 
 def figlet_header(text):
@@ -184,9 +186,11 @@ except:
 
 if DEBUG:
     print("User ID:", user_id)
-    print(str(len(prev_callsigns)))
-    print(prev_callsigns)
-
+    try:
+        print(str(len(prev_callsigns)))
+        print(prev_callsigns)
+    except:
+        pass
 # Fetch the webpage content of the dxworld timeline
 response = requests.get(dxworld_url)
 
