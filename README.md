@@ -1,4 +1,30 @@
 # DXWorld2HamAlert
+
+- Scrape the DXWorld monthly timeline for dxpeditions. 
+- Extract the callsigns compare with existing Hamalert triggers.
+- If new callsign create new rule
+- Delete last months rules
+
+You just need to run this once a month, use a suitable chron agent or windows task scheduler to fully automate your DX hunts!
+
+## Install
+
+### Linux / OSX
+```
+git clone https://github.com/868meshbot/DXWorld2HamAlert
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+```
+### Windows
+```
+git clone https://github.com/868meshbot/DXWorld2HamAlert
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Run
 ```
  ➜  python ./DX2HamAlert.py -u username -p 'password'
 ________  ____  _____      __            .__       .___ ________
