@@ -12,7 +12,7 @@ import pyfiglet
 import requests
 from dateutil.relativedelta import relativedelta
 
-DEBUG = 1
+DEBUG = 0
 
 CSI = "\033["
 RESET = CSI + "0m"
