@@ -7,6 +7,8 @@
 
 You just need to run this once a month, use a suitable chron agent or windows task scheduler to fully automate your DX hunts!
 
+## Prerequists
+Register for HamAlert [Here](https://hamalert.org/register)
 ## Install
 
 ### Linux / OSX
