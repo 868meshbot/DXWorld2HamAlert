@@ -52,6 +52,30 @@ accepted and which require attention.
 [+] Found 0 previous records from last month.
 [+] FOUND: Call Signs: 12
 [!] Removing any duplicates...
-[+] NEW: Call Signs: 0
-#Done!
+[+] NEW: Call Signs: 12
+[+] T88GF & T88XD
+[+] TY2AA
+[+] E51KEE
+[+] 3G1P
+[+] 5H1UM
+[+] YJ0CA
+[+] K9HEI
+[+] OJ0MN
+[+] KT8X
+[+] OG0C
+[+] SP9FIH
+[+] T30TTT
+# Spinning up HamAlert...
+[+] T88GF & T88XD ✔
+[+] TY2AA ✔
+[+] E51KEE ✔
+[+] 3G1P ✔
+[+] 5H1UM ✔
+[+] YJ0CA ✔
+[+] K9HEI ✔
+[+] OJ0MN ✔
+[+] KT8X ✔
+[+] OG0C ✔
+[+] SP9FIH ✔
+[+] T30TTT ✔
 ```
