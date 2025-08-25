@@ -31,10 +31,9 @@ delete_url = "https://hamalert.org/ajax/trigger_delete"
 dxworld_url = "https://www.hamradiotimeline.com/timeline/dxw_timeline_1_1.php"
 
 current_date = datetime.datetime.now()
-last_month_date = current_date - relativedelta(months=1)
-last_month = last_month_date.strftime("%B %Y")
-last_update = current_date.strftime("%B %Y")
+current_date_orig = current_date
 
+max_records = 100
 prev_callsigns = []
 
 
@@ -62,15 +61,18 @@ accepted and which require attention."""
 
 
 # Function to clean and extract callsigns
-def clean_callsign(call_sign):
-    # Remove everything before and including the first slash (e.g., FP/M0ABC -> M0ABC, TJ/M0ABC -> M0ABC)
-    if "/" in call_sign:
-        call_sign = call_sign.split("/")[1]  # Keep part after the first '/'
+def clean_callsign(cs: str) -> str | None:
+    cs = cs.strip().upper()
+    if not cs:
+        return None
 
-    # Ensure the callsign is valid (3 or more characters)
-    if len(call_sign) >= 3:
-        return call_sign
-    return None  # Invalid callsign
+    # If it contains "/", keep the bigger part
+    if "/" in cs:
+        parts = cs.split("/")
+        # Return the longer part
+        cs = max(parts, key=len)
+
+    return cs if re.match(r"^[A-Z0-9]+$", cs) else None
 
 
 headers_before = {
@@ -92,6 +94,23 @@ headers_before = {
     "upgrade-insecure-requests": "1",
 }
 
+headers_fetch = {
+    "accept": "*/*",
+    "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+    "cache-control": "no-cache",
+    "pragma": "no-cache",
+    "priority": "u=1, i",
+    "referer": "https://hamalert.org/triggers",
+    "sec-ch-ua": '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+    "x-requested-with": "XMLHttpRequest",
+}
+
 headers_trigger = {
     "accept": "*/*",
     "content-type": "application/json",
@@ -101,7 +120,7 @@ headers_trigger = {
 }
 
 params = {
-    "_": "1755547001215",
+    "_": "1756122236266",
 }
 
 # Start
@@ -110,7 +129,18 @@ print_header()
 parser = argparse.ArgumentParser(description="Login and grab Hamalert cookie")
 parser.add_argument("-u", "--username", required=True, help="Username")
 parser.add_argument("-p", "--password", required=True, help="Password")
+parser.add_argument(
+    "--next-month", action="store_true", help="Use next month instead of current month"
+)
 args = parser.parse_args()
+
+if args.next_month:
+    current_date = current_date + relativedelta(months=1)
+
+# Now compute months as usual
+last_month_date = current_date_orig - relativedelta(months=1)
+last_month = last_month_date.strftime("%B %Y")
+last_update = current_date.strftime("%B %Y")
 
 creds = {"username": args.username, "password": args.password}
 # Perform login and validate PHPSESSID
@@ -149,9 +179,9 @@ except Exception as e:
 try:
     response = requests.get(
         triggers_url,
-        params=params,
+        # params=params,
         cookies=cookies,
-        headers=headers_before,
+        headers=headers_fetch,
     )
 except Exception as e:
     print("[!]Error: " + str(e))
@@ -160,6 +190,8 @@ try:
     data = response.json()
 except Exception as e:
     print(RED + "[!]Error: " + str(e) + RESET)
+
+if DEBUG:
     print(response.status_code)
     print(response.text)
 
@@ -170,17 +202,29 @@ except:
     print("No user id found")
     exit(0)
 try:
-    ids_last_month = [item["_id"] for item in data if item.get("comment") == last_month]
+    ids_last_month = [
+        item["_id"]
+        for item in data
+        if last_month.lower() in str(item.get("comment", "")).lower()
+    ]
+
     ids_this_month = [
-        item["_id"] for item in data if item.get("comment") == last_update
+        item["_id"]
+        for item in data
+        if last_update.lower() in str(item.get("comment", "")).lower()
     ]
-    prev_callsigns = [
-        item["conditions"]["callsign"] for item in data if item.get("conditions", {})
-    ]
-    print("[+] Found " + str(len(ids_this_month)) + " existing records.")
-    print(
-        "[+] Found " + str(len(ids_last_month)) + " previous records from last month."
-    )
+
+    prev_callsigns = []
+    for item in data:
+        cs = item.get("conditions", {}).get("callsign")
+        if cs:
+            if isinstance(cs, list):
+                prev_callsigns.extend(cs)  # add all callsigns
+            else:
+                prev_callsigns.append(cs)  # add single callsign
+
+    print(f"[+] Found {len(ids_this_month)} existing records.")
+    print(f"[+] Found {len(ids_last_month)} previous records from last month.")
 except:
     print(RED + "[-] No existing hamalerts found. " + RESET)
 
@@ -196,15 +240,15 @@ response = requests.get(dxworld_url)
 
 
 # Extract the call signs from the JavaScript code in the page
-pattern = r"var labels = \[([^\]]+)\];"  # Regex to extract the labels array
-match = re.search(pattern, response.text)
+pattern = r"var\s+labels\s*=\s*\[(.*?)\];"
+match = re.search(pattern, response.text, re.DOTALL)
 
 if match:
     # Get the part of the text containing the call signs (inside the array)
     raw_labels = match.group(1)
+    raw_items = re.findall(r"'([^']*)'", raw_labels)
 
-    # Clean the call signs and split them into a list
-    callsigns = [clean_callsign(cs.strip().strip("'")) for cs in raw_labels.split(",")]
+    callsigns = [clean_callsign(cs) for cs in raw_items if clean_callsign(cs)]
 
     # Filter out None values (invalid callsigns)
     callsigns = list(filter(None, callsigns))
@@ -217,6 +261,11 @@ if match:
             " & ".join(c) if isinstance(c, list) else c for c in prev_callsigns
         ]
         callsigns = list(set(callsigns) - set(normalized_prev_callsigns))
+        available_slots = max_records - len(prev_callsigns)
+
+        if len(callsigns) > available_slots:
+            print("[-] Error: Max records is 100, need to delete some alerts...")
+            exit(0)
     print(GREEN + "[+] NEW: Call Signs: " + str(len(callsigns)) + RESET)
     for callsign in callsigns:
         print("[+] " + callsign)
@@ -239,11 +288,22 @@ if match:
                 "conditions": {
                     "callsign": calls,
                     "spotterDxcc": [
-                        #add your DXCC here
+                        209,
+                        223,
+                        106,
+                        245,
+                        114,
+                        122,
+                        265,
+                        279,
+                        294,
                     ],
                     "mode": ["ssb", "psk", "ft8", "ft4"],
                     "notSpotter": [
-                        # add websdrs you want to ignore here
+                        "2E0INH",
+                        "G4IRN",
+                        "GM4WJA",
+                        "ON5KQ",
                     ],
                     "band": [
                         "80m",
@@ -272,7 +332,9 @@ if match:
             if response.status_code == 200:
                 print(f"[+] {callsign} {GREEN}\u2714{RESET}")  # green tick ✔
             else:
-                print(f"[+] {callsign} {RED}\u2718{RESET}")  # red cross ✘
+                error_code = str(response.status_code)
+                print(f"[+] {callsign} {error_code} {RED}\u2718{RESET}")  # red cross ✘
+                print(response.text)
 else:
     print(
         RED + "ERROR: Something went wrong? Call signs not found in the page." + RESET
@@ -288,13 +350,14 @@ if len(ids_last_month) > 0:
         response = requests.post(
             delete_url,
             cookies=cookies,
-            headers=headers,
+            headers=headers_before,
             data=payload,
         )
         if DEBUG:
             if response.text.strip() == "true":
                 print(f"[+] {id} {GREEN}\u2714{RESET}")  # green tick ✔
             else:
-                print(f"[+] {id} {RED}\u2718{RESET}")
+                error_code = str(response.status_code)
+                print(f"[+] {id} {error_code} {RED}\u2718 {RESET}")
 
 print(GREEN + "#Done!" + RESET)
